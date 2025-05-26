@@ -1,46 +1,41 @@
+# Step 1: Import Libraries
 import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
-
+from sklearn.preprocessing import MinMaxScaler
 
 df = pd.read_csv("Titanic-Dataset.csv")  
 
-print("Shape:", df.shape)
-print("\nData Types:\n", df.dtypes)
-print("\nMissing Values:\n", df.isnull().sum())
-print("\nFirst 5 Rows:\n", df.head())
+print(df.head())
+print(df.info())
+print(df.describe())
 
-print("Missing values before:", df.isnull().sum())
-df.fillna(df.mean(numeric_only=True), inplace=True)  
-df.fillna(df.mode().iloc[0], inplace=True)           
-print("Missing values after:", df.isnull().sum())
+df['Age'] = df['Age'].fillna(df['Age'].median())
+df['Embarked'] = df['Embarked'].fillna(df['Embarked'].mode()[0])
+df = df.drop(columns=['Cabin'])
 
-categorical_cols = df.select_dtypes(include=["object", "category"]).columns
-df = pd.get_dummies(df, columns=categorical_cols, drop_first=True)
-print("Categorical columns encoded:", [col for col in df.columns if 'Sex_' in col or 'Embarked_' in col])
+df = pd.get_dummies(df, columns=['Sex', 'Embarked'], drop_first=True)
 
-
-numeric_cols = df.select_dtypes(include=np.number).columns
-scaler = StandardScaler()
-df[numeric_cols] = scaler.fit_transform(df[numeric_cols])
-print(df[numeric_cols].describe())
+scaler = MinMaxScaler()
+df[['Age', 'Fare']] = scaler.fit_transform(df[['Age', 'Fare']])
 
 
-for col in numeric_cols:
-    plt.figure(figsize=(6, 2))
-    sns.boxplot(x=df[col])
-    plt.title(f"Boxplot for {col}")
-    plt.show()
+sns.boxplot(x=df['Age'])
+plt.title("Boxplot - Age")
+plt.show()
 
-print("Before outlier removal:", df.shape)
-Q1 = df[numeric_cols].quantile(0.25)
-Q3 = df[numeric_cols].quantile(0.75)
-IQR = Q3 - Q1
+sns.boxplot(x=df['Fare'])
+plt.title("Boxplot - Fare")
+plt.show()
 
-df = df[~((df[numeric_cols] < (Q1 - 1.5 * IQR)) |
-          (df[numeric_cols] > (Q3 + 1.5 * IQR))).any(axis=1)]
-print("After outlier removal:", df.shape)
+for col in ['Age', 'Fare']:
+    Q1 = df[col].quantile(0.25)
+    Q3 = df[col].quantile(0.75)
+    IQR = Q3 - Q1
+    lower = Q1 - 1.5 * IQR
+    upper = Q3 + 1.5 * IQR
+    df = df[(df[col] >= lower) & (df[col] <= upper)]
 
-print("\nFinal cleaned data shape:", df.shape)
+print("✅ Cleaned Data Preview:")
+print(df.head())
